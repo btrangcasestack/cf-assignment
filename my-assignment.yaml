@@ -26,7 +26,7 @@ Resources:
   BriansStackQueue:
     Type: 'AWS::SQS::Queue'
     Properties:
-      QueueName: BriansStack
+      QueueName: !Sub ${AWS::StackName}_BriansStack
       DelaySeconds: 15
       VisibilityTimeout: 60
 
@@ -98,7 +98,7 @@ Resources:
             - sqs:GetQueueAttributes
             Resource: 
                 - !GetAtt BriansStackQueue.Arn
-                
+
   BriansStackEventSourceMapping:
     Type: "AWS::Lambda::EventSourceMapping"
     Properties:
