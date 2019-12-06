@@ -5,9 +5,8 @@ Description: >-
 Parameters:
   LambdaBucket:
     Type: "String"
-    Default: casestack-lambda-code
+    Default: casestack-lambda-code-dev
     AllowedValues:
-      - casestack-lambda-code
       - casestack-lambda-code-dev
     Description: S3 bucket that contains lambda code
   MyMessage:
@@ -19,7 +18,7 @@ Parameters:
     AllowedPattern: '[a-zA-Z0-9]*'
     ConstraintDescription: must contain only alphanumeric characters.
 Resources:
-#SNS resource
+#SNS resources
   MySNSTopic:
     Type: 'AWS::SNS::Topic'
     Properties:
@@ -28,223 +27,34 @@ Resources:
             - MyQueue1
             - Arn
           Protocol: sqs
-    Metadata:
-      'AWS::CloudFormation::Designer':
-        id: 50a7a689-d120-4fd3-b9d1-a8d4c010815a
 #SQS resources
   MyQueue1:
     Type: 'AWS::SQS::Queue'
-    Metadata:
-      'AWS::CloudFormation::Designer':
-        id: 677fb165-55e4-4969-a197-01fd8e15a8dc
+
+
   MyQueuePolicy:
     Type: 'AWS::SQS::QueuePolicy'
     Properties:
       PolicyDocument:
         Id: MyQueuePolicy
         Statement:
-          - Sid: Allow-SendMessage-To-Both-Queues-From-SNS-Topic
+          - Sid: Allow SQS to receive msgs from SNS
             Effect: Allow
-            Principal:
+            Principal: 
               AWS: '*'
-            Action:
+            Action: 
               - 'sqs:SendMessage'
+              - 'sqs:ReceiveMessage'
             Resource: '*'
             Condition:
               ArnEquals:
                 'aws:SourceArn': !Ref MySNSTopic
       Queues:
         - !Ref MyQueue1
-    Metadata:
-      'AWS::CloudFormation::Designer':
-        id: aff7e99d-90ac-4908-b640-292b0c130a99
-#Lambda resources
-  MyLambda:
-      Type: "AWS::Lambda::Function"
-      Properties:
-        Description: "logs message from SQS"
-        Handler: lambda/brian-lambda.handler
-        Runtime: nodejs12.x
-        Timeout: 60
-        Role: !GetAtt LambdaExecutionRole.Arn
-        Tags:
-          - Key: xml
-            Value: "shipping process"
-        Code:
-          S3Bucket: !Ref LambdaBucket
-          S3Key: !Sub ${AWS::StackName}.zip
-  TranslationEventSourceMapping:
-      Type: "AWS::Lambda::EventSourceMapping"
-      Properties:
-        BatchSize: 1
-        FunctionName: !Ref MyLambda
-        EventSourceArn: !GetAtt MyQueue1.Arn
-  LambdaExecutionRole:
-    Type: "AWS::IAM::Role"
-    Properties:
-      RoleName: !Sub ${AWS::StackName}-execution-role
-      Description: "Brian's Lambda execution role"
-      AssumeRolePolicyDocument:
-        Version: 2012-10-17
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service:
-                - lambda.amazonaws.com
-            Action:
-              - sts:AssumeRole
-      Path: /
-      Policies:
-        - PolicyName: logs
-          PolicyDocument:
-            Version: 2012-10-17
-            Statement:
-              - Effect: Allow
-                Action:
-                  - logs:*
-                Resource:
-                  - arn:aws:logs:*:*:*
-        - PolicyName: MyQueuePolicy
-          PolicyDocument:
-            Version: 2012-10-17
-            Statement:
-              - Effect: Allow
-                Action:
-                  - sqs:ReceiveMessage
-                  - sqs:DeleteMessage
-                  - sqs:GetQueueAttributes
-                Resource:
-                  - !GetAtt MyQueue1.Arn
-        - PolicyName: MyTopicGroupPolicy
-          PolicyDocument:
-            Version: 2012-10-17
-            Statement:
-              - Effect: Allow
-                Action:
-                  - sns:Publish
-                  - sqs:SendMessage
-                Resource:
-                  - !Ref MySNSTopic
-Outputs:
-  MySNSTopicTopicARN:
-    Value: !Ref MySNSTopic
-    Description: Topic ARN of newly created SNS topic
-  MyQueue1Info:
-    Value: !Join 
-      - ' '
-      - - 'ARN:'
-        - !GetAtt 
-          - MyQueue1
-          - Arn
-        - 'URL:'
-        - !Ref MyQueue1
-    Description: Queue1 details
-Metadata:
-  'AWS::CloudFormation::Designer':
-    857bffe9-e901-4a1c-b9dc-fcd2159fab8e:
-      size:
-        width: 60
-        height: 60
-      position:
-        x: 60
-        'y': 90
-      z: 1
-      embeds: []
-    2a0e3682-9e74-481c-aaca-76f8b1c6c265:
-      size:
-        width: 60
-        height: 60
-      position:
-        x: 180
-        'y': 90
-      z: 1
-      embeds: []
-    d2bc1d8d-3312-4340-9300-dc55ad39c715:
-      size:
-        width: 60
-        height: 60
-      position:
-        x: 60
-        'y': 210
-      z: 1
-      embeds: []
-    84efb88b-9ac2-4e45-8e4f-9a357c73de86:
-      size:
-        width: 60
-        height: 60
-      position:
-        x: 180
-        'y': 210
-      z: 1
-      embeds: []
-    677fb165-55e4-4969-a197-01fd8e15a8dc:
-      size:
-        width: 60
-        height: 60
-      position:
-        x: 300
-        'y': 210
-      z: 1
-      embeds: []
-    ff94e6e6-3721-4fa2-8786-6d8b770d696a:
-      size:
-        width: 60
-        height: 60
-      position:
-        x: 60
-        'y': 330
-      z: 1
-      embeds: []
-    b37f8e57-aaa6-4831-8e82-2d2870466823:
-      size:
-        width: 60
-        height: 60
-      position:
-        x: 180
-        'y': 330
-      z: 1
-      embeds: []
-      isassociatedwith:
-        - 857bffe9-e901-4a1c-b9dc-fcd2159fab8e
-        - ff94e6e6-3721-4fa2-8786-6d8b770d696a
-    50a7a689-d120-4fd3-b9d1-a8d4c010815a:
-      size:
-        width: 60
-        height: 60
-      position:
-        x: 300
-        'y': 330
-      z: 1
-      embeds: []
-    aff7e99d-90ac-4908-b640-292b0c130a99:
-      size:
-        width: 60
-        height: 60
-      position:
-        x: 420
-        'y': 90
-      z: 1
-      embeds: []
-      isassociatedwith:
-        - 677fb165-55e4-4969-a197-01fd8e15a8dc
-    bcba4693-2410-4bd3-9819-ce1049ec1496:
-      size:
-        width: 60
-        height: 60
-      position:
-        x: 420
-        'y': 210
-      z: 1
-      embeds: []
-    cc88043e-e9dc-4345-b776-78ff43fdfebf:
-      size:
-        width: 60
-        height: 60
-      position:
-        x: 420
-        'y': 330
-      z: 1
-      embeds: []
-      isassociatedwith:
-        - d2bc1d8d-3312-4340-9300-dc55ad39c715
-        - bcba4693-2410-4bd3-9819-ce1049ec1496
+
+
+
+
+
+      
+
