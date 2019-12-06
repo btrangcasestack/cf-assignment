@@ -40,14 +40,10 @@ Resources:
           - Sid: Allow SQS to receive msgs from SNS
             Effect: Allow
             Principal: 
-              AWS: '*'
+              Service: sns.amazonaws.com
             Action: 
               - 'sqs:SendMessage'
-              - 'sqs:ReceiveMessage'
             Resource: '*'
-            Condition:
-              ArnEquals:
-                'aws:SourceArn': !Ref BriansStackSNS
       Queues:
         - !Ref BriansStackQueue
 
