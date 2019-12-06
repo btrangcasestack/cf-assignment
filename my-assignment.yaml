@@ -69,6 +69,7 @@ Resources:
   LambdaExecutionRole:
     Type: "AWS::IAM::Role"
     Properties:
+      RoleName: !Sub ${AWS::StackName}-execution-role
       Description: "This should log event stuff"
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
