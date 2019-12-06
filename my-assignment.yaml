@@ -9,36 +9,33 @@ Parameters:
     AllowedValues:
       - casestack-lambda-code-dev
     Description: S3 bucket that contains lambda code
-  MyMessage:
-    NoEcho: 'true'
-    Type: String
-    Description: Message for Lambda
-    MinLength: '1'
-    MaxLength: '41'
-    AllowedPattern: '[a-zA-Z0-9]*'
-    ConstraintDescription: must contain only alphanumeric characters.
 Resources:
 #SNS resources
-  MySNSTopic:
+  BriansStackSNS:
     Type: 'AWS::SNS::Topic'
     Properties:
+      DisplayName: !Sub '${AWS::StackName}_topic'
+      TopicName: !Sub '${AWS::StackName}_topic'
       Subscription:
         - Endpoint: !GetAtt 
-            - MyQueue1
+            - BriansStackQueue
             - Arn
           Protocol: sqs
+
 #SQS resources
-  MyQueue1:
+  BriansStackQueue:
     Type: 'AWS::SQS::Queue'
     Properties:
+      QueueName: BriansStack
       DelaySeconds: 15
       VisibilityTimeout: 60
 
-  MyQueuePolicy:
+  BriansQueuePolicy:
     Type: 'AWS::SQS::QueuePolicy'
     Properties:
       PolicyDocument:
-        Id: MyQueuePolicy
+        Id: BriansQueuePolicy
+        Version: 2012-10-17
         Statement:
           - Sid: Allow SQS to receive msgs from SNS
             Effect: Allow
@@ -50,13 +47,17 @@ Resources:
             Resource: '*'
             Condition:
               ArnEquals:
-                'aws:SourceArn': !Ref MySNSTopic
+                'aws:SourceArn': !Ref BriansStackSNS
       Queues:
-        - !Ref MyQueue1
+        - !Ref BriansStackQueue
+
+
 #lambdas require a role and a function
-  LogMessage:
+  BriansStackFunction:
     Type: "AWS::Lambda::Function"
     Properties:
+      FunctionName: !Sub ${AWS::StackName}_logger
+      Description: "This function logs events from SQS"
       Handler: lambda/brian-lambda.handler
       Role: !GetAtt LambdaExecutionRole.Arn
       Code: 
@@ -96,12 +97,13 @@ Resources:
             - sqs:DeleteMessage
             - sqs:GetQueueAttributes
             Resource: 
-                - !GetAtt MyQueue1.Arn
-  MyEventSourceMapping:
+                - !GetAtt BriansStackQueue.Arn
+                
+  BriansStackEventSourceMapping:
     Type: "AWS::Lambda::EventSourceMapping"
     Properties:
-        FunctionName: !Ref LogMessage
-        EventSourceArn: !GetAtt MyQueue1.Arn
+        FunctionName: !Ref BriansStackFunction
+        EventSourceArn: !GetAtt BriansStackQueue.Arn
 
       
 
