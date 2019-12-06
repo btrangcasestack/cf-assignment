@@ -1,7 +1,8 @@
 exports.handler = async function(event, context) {
-    event.Records.forEach(record => {
-      const { body } = record;
-      console.log(body);
-    });
-    return {};
+    // event.Records.forEach(record => {
+    //   const { body } = record;
+    //   console.log(body);
+    // });
+    // return {};
+    throw new Error('dead like dillinger')
   }

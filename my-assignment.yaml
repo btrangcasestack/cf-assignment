@@ -33,6 +33,13 @@ Resources:
     Properties:
       DelaySeconds: 15
       VisibilityTimeout: 60
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt MyDeadQueue1.Arn
+        maxReceiveCount: 2
+
+  MyDeadQueue1:
+    Type: "AWS::SQS::Queue"
+
 
   MyQueuePolicy:
     Type: 'AWS::SQS::QueuePolicy'
@@ -97,6 +104,7 @@ Resources:
             - sqs:GetQueueAttributes
             Resource: 
                 - !GetAtt MyQueue1.Arn
+
   MyEventSourceMapping:
     Type: "AWS::Lambda::EventSourceMapping"
     Properties:
