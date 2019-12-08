@@ -54,12 +54,10 @@ Resources:
               Service: sns.amazonaws.com
             Action: 
               - 'sqs:SendMessage'
-            Resource: !Ref BriansStackSNS
+            Resource: !GetAtt BriansStackQueue.Arn
       Queues:
         - !Ref BriansStackQueue
-
-
-  #lambdas require a role and a function
+  #Lambda function
   BriansStackFunction:
     Type: "AWS::Lambda::Function"
     Properties:
@@ -105,7 +103,7 @@ Resources:
             - Effect: Allow
               Action: 
               - sqs:ReceiveMessage #allow lambda to make a request to  receive message from sqs
-              - sqs:DeleteMessage
+              - sqs:DeleteMessage  #I had to add this or stack won't be created
               - sqs:GetQueueAttributes
               Resource: 
                   - !GetAtt BriansStackQueue.Arn
@@ -120,28 +118,21 @@ Resources:
               Resource:
                 - !GetAtt BriansStackBucket.Arn
                 - !Sub arn:aws:s3:::${ProjectBucketName}
+
   #Lambda Event Source Mapping
   BriansStackEventSourceMapping:
     Type: "AWS::Lambda::EventSourceMapping"
     Properties:
         FunctionName: !Ref BriansStackFunction
         EventSourceArn: !GetAtt BriansStackQueue.Arn
-  #Lambda Permission    
-  BriansStackLambdaPermission:
-    Type: "AWS::Lambda::Permission"
-    Properties:
-      Action: lambda:InvokeFunction
-      FunctionName: !Ref BriansStackFunction
-      Principal: sqs.amazonaws.com
-      SourceAccount: !Ref AWS::AccountId
-      SourceArn: !GetAtt BriansStackQueue.Arn
-  
+
   #S3 Bucket
   BriansStackBucket:
     DependsOn:
       - BriansStackQueue
       - BriansQueuePolicy
     Type: "AWS::S3::Bucket"
+    DeletionPolicy: Delete
     Properties:
         BucketName: !Ref ProjectBucketName
 
