@@ -43,7 +43,7 @@ Resources:
               Service: sns.amazonaws.com
             Action: 
               - 'sqs:SendMessage'
-            Resource: !Ref BriansStackSNS
+            Resource: !GetAtt BriansStackQueue.Arn
       Queues:
         - !Ref BriansStackQueue
 
