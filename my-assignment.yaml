@@ -9,8 +9,12 @@ Parameters:
     AllowedValues:
       - casestack-lambda-code-dev
     Description: S3 bucket that contains lambda code
+  ProjectBucketName:
+    Type: String
+    Default: brian-hippogriff-bucket
+    Description: Brian's bucket
 Resources:
-#SNS resources
+  #SNS Topic
   BriansStackSNS:
     Type: 'AWS::SNS::Topic'
     Properties:
@@ -21,15 +25,22 @@ Resources:
             - BriansStackQueue
             - Arn
           Protocol: sqs
-
-#SQS resources
+  #Queue 
   BriansStackQueue:
     Type: 'AWS::SQS::Queue'
     Properties:
-      QueueName: !Sub ${AWS::StackName}_BriansStack
+      QueueName: !Sub '${AWS::StackName}_Queue'
       DelaySeconds: 15
       VisibilityTimeout: 60
-
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt BriansStackDeadQueue.Arn
+        maxReceiveCount: 2
+  #DeadQueue
+  BriansStackDeadQueue:
+    Type: "AWS::SQS::Queue"
+    Properties:
+      QueueName: !Sub '${AWS::StackName}_DeadQueue'
+  #Queue Policy
   BriansQueuePolicy:
     Type: 'AWS::SQS::QueuePolicy'
     Properties:
@@ -48,12 +59,12 @@ Resources:
         - !Ref BriansStackQueue
 
 
-#lambdas require a role and a function
+  #lambdas require a role and a function
   BriansStackFunction:
     Type: "AWS::Lambda::Function"
     Properties:
       FunctionName: !Sub ${AWS::StackName}_logger
-      Description: "This function logs events from SQS"
+      Description: "This uploads file to s3 bucket"
       Handler: lambda/brian-lambda.handler
       Role: !GetAtt LambdaExecutionRole.Arn
       Code: 
@@ -61,46 +72,92 @@ Resources:
         S3Key: BriansStack.zip
       Runtime: nodejs12.x
       Timeout: 60
-      
+      Environment:
+        Variables:
+          SOURCE_BUCKET: !Ref ProjectBucketName
+  #Lambda Role        
   LambdaExecutionRole:
     Type: "AWS::IAM::Role"
     Properties:
       RoleName: !Sub ${AWS::StackName}-execution-role
-      Description: "This should log event stuff"
+      Description: "This should upload file to S3"
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
         - Effect: Allow
-          Principal:
+          Principal: #principal is the entity making request
             Service:
             - lambda.amazonaws.com
           Action:
           - sts:AssumeRole
       Policies:
-      - PolicyName: root
-        PolicyDocument:
-          Version: '2012-10-17'
-          Statement:
-          - Effect: Allow
-            Action:
-            - logs:*
-            Resource: arn:aws:logs:*:*:*
-      - PolicyName: sqs
-        PolicyDocument: 
-          Statement: 
-          - Effect: Allow
-            Action: 
-            - sqs:ReceiveMessage
-            - sqs:DeleteMessage
-            - sqs:GetQueueAttributes
-            Resource: 
-                - !GetAtt BriansStackQueue.Arn
-
+        - PolicyName: root
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+            - Effect: Allow
+              Action:
+              - logs:*
+              Resource: arn:aws:logs:*:*:*
+        - PolicyName: sqs
+          PolicyDocument: 
+            Statement: 
+            - Effect: Allow
+              Action: 
+              - sqs:ReceiveMessage #allow lambda to make a request to  receive message from sqs
+              - sqs:DeleteMessage
+              - sqs:GetQueueAttributes
+              Resource: 
+                  - !GetAtt BriansStackQueue.Arn
+        - PolicyName: s3
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+            - Effect: Allow
+              Action:
+              - s3:PutObject
+              - s3:GetObject
+              Resource:
+                - !GetAtt BriansStackBucket.Arn
+                - !Sub arn:aws:s3:::${ProjectBucketName}
+  #Lambda Event Source Mapping
   BriansStackEventSourceMapping:
     Type: "AWS::Lambda::EventSourceMapping"
     Properties:
         FunctionName: !Ref BriansStackFunction
         EventSourceArn: !GetAtt BriansStackQueue.Arn
+  #Lambda Permission    
+  BriansStackLambdaPermission:
+    Type: "AWS::Lambda::Permission"
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref BriansStackFunction
+      Principal: sqs.amazonaws.com
+      SourceAccount: !Ref AWS::AccountId
+      SourceArn: !GetAtt BriansStackQueue.Arn
+  
+  #S3 Bucket
+  BriansStackBucket:
+    DependsOn:
+      - BriansStackQueue
+      - BriansQueuePolicy
+    Type: "AWS::S3::Bucket"
+    Properties:
+        BucketName: !Ref ProjectBucketName
 
-      
+  #S3 Bucket Policy
+  BriansStackBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref BriansStackBucket
+      PolicyDocument:
+        Statement:
+          - Action: s3:PutObject
+            Effect: Allow
+            Principal: '*'
+            Resource:
+              - !Sub ${BriansStackBucket.Arn}
+              - !Sub ${BriansStackBucket.Arn}/*        
+
+
 
