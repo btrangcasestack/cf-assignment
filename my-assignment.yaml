@@ -13,6 +13,7 @@ Parameters:
     Type: String
     Default: brian-hippogriff-bucket
     Description: Brian's bucket
+
 Resources:
   #SNS Topic
   BriansStackSNS:
@@ -55,6 +56,14 @@ Resources:
             Action: 
               - 'sqs:SendMessage'
             Resource: !GetAtt BriansStackQueue.Arn
+          - Sid: Allow SQS to receive notification from S3
+            Effect: Allow
+            Principal:
+              Service: s3.amazonaws.com
+            Action:
+              - 'sqs:SendMessage'
+            Resource: !GetAtt BriansStackQueue.Arn
+            
       Queues:
         - !Ref BriansStackQueue
   #Lambda function
@@ -135,6 +144,11 @@ Resources:
     DeletionPolicy: Delete
     Properties:
         BucketName: !Ref ProjectBucketName
+        NotificationConfiguration:
+          QueueConfigurations:
+            - Event: s3:ObjectCreated:* 
+              Queue: !GetAtt BriansStackQueue.Arn
+
 
   #S3 Bucket Policy
   BriansStackBucketPolicy:
