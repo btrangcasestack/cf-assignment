@@ -26,6 +26,7 @@ Resources:
             - BriansStackQueue
             - Arn
           Protocol: sqs
+          
   #Queue 
   BriansStackQueue:
     Type: 'AWS::SQS::Queue'
@@ -36,13 +37,17 @@ Resources:
       RedrivePolicy:
         deadLetterTargetArn: !GetAtt BriansStackDeadQueue.Arn
         maxReceiveCount: 2
+
   #DeadQueue
   BriansStackDeadQueue:
     Type: "AWS::SQS::Queue"
     Properties:
       QueueName: !Sub '${AWS::StackName}_DeadQueue'
-  #Queue Policy
+
+  #SQS Policy
   BriansQueuePolicy:
+    DependsOn:
+      - BriansStackQueue
     Type: 'AWS::SQS::QueuePolicy'
     Properties:
       PolicyDocument:
@@ -63,7 +68,7 @@ Resources:
             Action:
               - 'sqs:SendMessage'
             Resource: !GetAtt BriansStackQueue.Arn
-            
+
       Queues:
         - !Ref BriansStackQueue
   #Lambda function
