@@ -1,7 +1,7 @@
 AWSTemplateFormatVersion: 2010-09-09
 Description: >-
   This is a stack where SNS publishes to SQS, that then messages the lambda
-  which console.logs the message
+  which to upload file to s3. Afterwards, S3 will notify lambda to console.log file
 Parameters:
   LambdaBucket:
     Type: "String"
