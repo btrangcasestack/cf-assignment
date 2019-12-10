@@ -1,7 +1,7 @@
 AWSTemplateFormatVersion: 2010-09-09
 Description: >-
   This is a stack where SNS publishes to SQS, that then messages the lambda
-  which console.logs the message
+  which to upload file to s3. Afterwards, S3 will notify lambda to console.log file
 Parameters:
   LambdaBucket:
     Type: "String"
@@ -13,6 +13,7 @@ Parameters:
     Type: String
     Default: brian-hippogriff-bucket
     Description: Brian's bucket
+
 Resources:
   #SNS Topic
   BriansStackSNS:
@@ -25,6 +26,7 @@ Resources:
             - BriansStackQueue
             - Arn
           Protocol: sqs
+          
   #Queue 
   BriansStackQueue:
     Type: 'AWS::SQS::Queue'
@@ -35,13 +37,17 @@ Resources:
       RedrivePolicy:
         deadLetterTargetArn: !GetAtt BriansStackDeadQueue.Arn
         maxReceiveCount: 2
+
   #DeadQueue
   BriansStackDeadQueue:
     Type: "AWS::SQS::Queue"
     Properties:
       QueueName: !Sub '${AWS::StackName}_DeadQueue'
-  #Queue Policy
+
+  #SQS Policy
   BriansQueuePolicy:
+    DependsOn:
+      - BriansStackQueue
     Type: 'AWS::SQS::QueuePolicy'
     Properties:
       PolicyDocument:
@@ -55,6 +61,14 @@ Resources:
             Action: 
               - 'sqs:SendMessage'
             Resource: !GetAtt BriansStackQueue.Arn
+          - Sid: Allow SQS to receive notification from S3
+            Effect: Allow
+            Principal:
+              Service: s3.amazonaws.com
+            Action:
+              - 'sqs:SendMessage'
+            Resource: !GetAtt BriansStackQueue.Arn
+
       Queues:
         - !Ref BriansStackQueue
   #Lambda function
@@ -135,6 +149,11 @@ Resources:
     DeletionPolicy: Delete
     Properties:
         BucketName: !Ref ProjectBucketName
+        NotificationConfiguration:
+          QueueConfigurations:
+            - Event: s3:ObjectCreated:* 
+              Queue: !GetAtt BriansStackQueue.Arn
+
 
   #S3 Bucket Policy
   BriansStackBucketPolicy:
