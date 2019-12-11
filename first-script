@@ -1,0 +1,4 @@
+#!/bin/bash
+
+aws s3api delete-object --bucket brian-hippogriff-bucket --key BriansStack.zip
+aws cloudformation delete-stack --stack-name BriansStack #delete my stack

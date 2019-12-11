@@ -1,7 +1,7 @@
 AWSTemplateFormatVersion: 2010-09-09
 Description: >-
   This is a stack where SNS publishes to SQS, that then messages the lambda
-  which to upload file to s3. Afterwards, S3 will notify lambda to console.log file
+  which to upload file to s3. Afterwards, lambda will upload s3 event details to dynamodb as a document
 Parameters:
   LambdaBucket:
     Type: "String"
@@ -132,6 +132,16 @@ Resources:
               Resource:
                 - !GetAtt BriansStackBucket.Arn
                 - !Sub arn:aws:s3:::${ProjectBucketName}
+        - PolicyName: dynamoDB
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+            - Effect: Allow
+              Action:
+              - 'dynamodb:PutItem'
+              Resource: !GetAtt
+                - BriansStackDynamoDB
+                - Arn
 
   #Lambda Event Source Mapping
   BriansStackEventSourceMapping:
@@ -168,6 +178,24 @@ Resources:
             Resource:
               - !Sub ${BriansStackBucket.Arn}
               - !Sub ${BriansStackBucket.Arn}/*        
+  
+  #DynamoDB table
+  BriansStackDynamoDB:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: "BriansStackDocumentTable"
+      AttributeDefinitions:
+        - 
+          AttributeName: "ObjectKey"
+          AttributeType: "S"
+      KeySchema:
+        - 
+          AttributeName: "ObjectKey"
+          KeyType: "HASH"
+      ProvisionedThroughput:
+        ReadCapacityUnits: "5"
+        WriteCapacityUnits: "5"
 
+      
 
 
